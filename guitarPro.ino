@@ -2,8 +2,9 @@
 #include <LiquidCrystal_I2C.h>
 
 #define BUTTON_NEXT 13
-#define BUTTON_PROTECTION 100
-#define LONG_PRESS 1000
+#define BUTTON_PROTECTION 50
+#define BUTTON_SHORT_PRESS_TIME 100
+#define BUTTON_LONG_PRESS_TIME 1000
 #define LINE_CURR 1
 #define LINE_NEXT 3
 #define LINE_MENU 2
@@ -26,6 +27,7 @@ int maxStrings=6; //сделать возможность указать кол�
 int stringsCounter = 0;
 int lad=5;
 bool btnPressed=1;
+bool hardMode=0;
 
 LiquidCrystal_I2C lcd(0x3f,20,4);  
 
@@ -62,6 +64,7 @@ void lcdExersise(int lcdLine)
 {
   lcd.setCursor(POS_LAD,lcdLine);
   lcd.print(lad);
+  lcd.print(" ");
   lcd.setCursor(POS_STRING,lcdLine);
   lcd.print(curString);
   lcdPattern(fingers[curFinger][curPos], lcdLine);
@@ -127,6 +130,23 @@ void nextStep()
   }
 }
 
+void hardStep()
+{
+  curPos = random(0,MAXPOS - 1);
+  curFinger = random(0, MAXFINGER - 1);
+  curString = random(1, 6);
+  lad = random(1,12); //подумать о более плавном перемещении по всему грифу. 
+}
+
+void changeMode()
+{
+  hardMode = !hardMode;
+  if(hardMode == 1)
+    lcdMode("HARD");
+  else
+    lcdMode("EASY");
+}
+
 void setup()
 {
   pinMode(BUTTON_NEXT, INPUT_PULLUP);
@@ -142,26 +162,33 @@ void setup()
 
 void loop()
 {
-if(digitalRead(BUTTON_NEXT) == LOW)
-{
-  //пауза для защиты от дребезга
-  delay(BUTTON_PROTECTION);  
-  //повторный опрос кнопки
-  if(digitalRead(BUTTON_NEXT) == LOW)
-  {
-    //один раз выводим текст
-    btnPressed = 1;
-    //ничего не делаем, пока кнопка нажата
-    while(digitalRead(BUTTON_NEXT) == LOW);
-    delay(BUTTON_PROTECTION);
-    }
+  //dвынеси меня в функцию
+  uint16_t buttonPressTime = 0;
+  while(digitalRead(BUTTON_NEXT) == LOW){
+    //шаг по шкале времени
+    delay(BUTTON_PROTECTION);  
+    //считаем время
+    buttonPressTime += BUTTON_PROTECTION;
+    //это нужно, чтоб счетчик не переполнился, если кто-то уснет на кнопке
+    if(buttonPressTime > BUTTON_LONG_PRESS_TIME)
+      buttonPressTime = BUTTON_LONG_PRESS_TIME;
   }
+  //delay(BUTTON_PROTECTION);
+
+  if(buttonPressTime >= BUTTON_LONG_PRESS_TIME)
+    changeMode();
+
+  if(buttonPressTime >= BUTTON_SHORT_PRESS_TIME)
+    btnPressed = 1; 
 
 //зато не надо отдельно выводить информацию до первого нажатия кнопки. Вывели и ждем
   if (btnPressed == 1)
   {
     lcdExersise(LINE_CURR);
-    nextStep();
+    if (hardMode == 1)
+      hardStep();
+    else
+      nextStep();
     lcdExersise(LINE_NEXT);
     btnPressed = 0;
   }
