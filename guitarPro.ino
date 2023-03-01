@@ -4,19 +4,23 @@
 #define BUTTON_NEXT 13
 #define BUTTON_PROTECTION 100
 #define LONG_PRESS 1000
-#define PATTERN_STRING 1
-#define INFO_STRING 3
+#define LINE_CURR 1
+#define LINE_NEXT 3
+#define LINE_MENU 2
+#define POS_LAD 8
+#define POS_STRING 4
+#define POS_PATTERN 12
 
 //паттерны
-int fingers[][6]={
-  {1343,1434,1341,1314,1431,1413},
-  {3143,3413,3414,3141,3134,3431},
-  {4143,4341,4134,4314,4131,4313}
+int fingers[][4]={
+  {1343,1434,1314,1413},
+  {3414,3141,3134,3431},
+  {4143,4341,4131,4313}
   };
 int curFinger = 0;
 #define MAXFINGER 3
 int curPos = 0;
-#define MAXPOS 6
+#define MAXPOS 4
 int curString=4;
 int maxStrings=6; //сделать возможность указать количество струн
 int stringsCounter = 0;
@@ -24,6 +28,44 @@ int lad=5;
 bool btnPressed=1;
 
 LiquidCrystal_I2C lcd(0x3f,20,4);  
+
+void lcdMode(String strMode)
+{
+  size_t i;
+  for (i=0; i< 4; i++)
+  {
+    lcd.setCursor(1,i);
+    lcd.print(strMode[i]);
+  }
+}
+
+void lcdMenu()
+{
+  lcd.setCursor(POS_LAD,LINE_MENU);
+  lcd.print("*");
+    lcd.setCursor(POS_STRING,LINE_MENU);
+  lcd.print("|");
+}
+
+void lcdPattern(int pattern, int lcdLine)
+{
+  String curPattern = String(pattern);
+  size_t j;
+  for(j=0;j<4;j++)
+  {
+    lcd.setCursor(POS_PATTERN+j+j,lcdLine);
+    lcd.print(curPattern[j]);
+  }
+}
+
+void lcdExersise(int lcdLine)
+{
+  lcd.setCursor(POS_LAD,lcdLine);
+  lcd.print(lad);
+  lcd.setCursor(POS_STRING,lcdLine);
+  lcd.print(curString);
+  lcdPattern(fingers[curFinger][curPos], lcdLine);
+}
 
 void shuffle(int *array, size_t n)
 {
@@ -38,17 +80,6 @@ void shuffle(int *array, size_t n)
           array[i] = t;
         }
     }
-}
-
-void printPattern(int pattern)
-{
-  String curPattern = String(pattern);
-  size_t j;
-  for(j=0;j<4;j++)
-  {
-    lcd.setCursor(10+j+j,PATTERN_STRING);
-    lcd.print(curPattern[j]);
-  }
 }
 
 //меняем палец  которого начинаются паттерны
@@ -79,7 +110,7 @@ void nextString()
     nextFinger();
   }
   //не забываем перемешать
-  shuffle(fingers[curFinger], 6);
+  shuffle(fingers[curFinger], MAXPOS);
 
 }
 
@@ -99,27 +130,15 @@ void nextStep()
 void setup()
 {
   pinMode(BUTTON_NEXT, INPUT_PULLUP);
-  shuffle(fingers[curFinger], 6);
+  shuffle(fingers[curFinger], MAXPOS);
   
   lcd.init();                      // initialize the lcd 
   lcd.init();
   // Print a message to the LCD.
   lcd.backlight();
-  lcd.setCursor(0,0);
-  lcd.print("EASY mode");
-  lcd.setCursor(0,INFO_STRING);
-  lcd.print("STRING: ");
-  lcd.setCursor(11,INFO_STRING);
-  lcd.print("POS: ");
-  lcd.setCursor(0,PATTERN_STRING);
-  lcd.print("Pattern: ");
-  
-//когда добавлю рандом выбора позиции убрать 
-  lcd.setCursor(16,INFO_STRING);
-  lcd.print(lad);
-  
+  lcdMode("EASY");
+  lcdMenu();
 }
-
 
 void loop()
 {
@@ -141,11 +160,9 @@ if(digitalRead(BUTTON_NEXT) == LOW)
 //зато не надо отдельно выводить информацию до первого нажатия кнопки. Вывели и ждем
   if (btnPressed == 1)
   {
-    printPattern(fingers[curFinger][curPos]);
-    //выводим струну
-    lcd.setCursor(8,INFO_STRING);
-    lcd.print(curString);
+    lcdExersise(LINE_CURR);
     nextStep();
+    lcdExersise(LINE_NEXT);
     btnPressed = 0;
   }
 
